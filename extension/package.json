@@ -1,0 +1,71 @@
+{
+  "name": "copilot-memory",
+  "displayName": "Copilot Memory",
+  "description": "Persistent memory for GitHub Copilot — store and retrieve context across sessions.",
+  "version": "0.0.1",
+  "publisher": "memblock",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "copilotMemory.storeMemory",
+        "title": "Copilot Memory: Store Memory"
+      },
+      {
+        "command": "copilotMemory.retrieveMemory",
+        "title": "Copilot Memory: Retrieve Memory"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "copilot-memory.memory",
+        "fullName": "Memory",
+        "name": "memory",
+        "description": "Retrieves stored memories and uses them as context for your question.",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "recall",
+            "description": "Recall relevant memories for your question"
+          },
+          {
+            "name": "save",
+            "description": "Save the current chat message as a memory"
+          }
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "Copilot Memory",
+      "properties": {
+        "copilotMemory.serverUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:3210",
+          "description": "URL of the memory-engine Rust server."
+        },
+        "copilotMemory.autoCapture": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically capture document changes as memories."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.93.0",
+    "typescript": "^5.3.0"
+  }
+}

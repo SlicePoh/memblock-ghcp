@@ -1,0 +1,5 @@
+# VS Code workspace settings
+.vscode/
+
+# Memory data (stored in each project's .copilot-memory/)
+.copilot-memory/
