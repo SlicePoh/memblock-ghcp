@@ -1,11 +1,10 @@
 use axum::{http::StatusCode, routing::{get, post}, Json, Router};
 use serde::{Deserialize, Serialize};
-
 use crate::embedding::embed;
 use crate::retrieval::cosine;
-use crate::storage::{load, store};
+use crate::storage::{load, store, list_all, MemoryEntry};
 
-// ── Request / Response types ────────────────────────────────────────────────
+// Request / Response types 
 
 #[derive(Deserialize)]
 pub struct StoreReq {
@@ -21,22 +20,26 @@ pub struct RetrieveReq {
     prompt: String,
 }
 
+#[derive(Deserialize)]
+pub struct ListReq {
+    project: String,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct HealthResponse {
     pub status: String,
 }
 
-// ── Router ──────────────────────────────────────────────────────────────────
-
+// Router
 pub fn routes() -> Router {
     Router::new()
         .route("/store", post(store_handler))
         .route("/retrieve", post(retrieve_handler))
+        .route("/list", post(list_handler))
         .route("/health", get(health))
 }
 
-// ── Handlers ────────────────────────────────────────────────────────────────
-
+// Handlers 
 async fn store_handler(
     Json(req): Json<StoreReq>,
 ) -> Result<Json<&'static str>, (StatusCode, String)> {
@@ -46,14 +49,12 @@ async fn store_handler(
     if req.context.trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "context must not be empty".into()));
     }
-
     let emb = embed(&req.context);
     store(&req.project, &req.source, &req.context, &emb, req.id.as_deref())
         .map_err(|e| {
             tracing::error!("store failed: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, format!("storage error: {}", e))
         })?;
-
     tracing::info!(
         project = %req.project,
         source = %req.source,
@@ -61,7 +62,6 @@ async fn store_handler(
         len = req.context.len(),
         "stored memory"
     );
-
     Ok(Json("ok"))
 }
 
@@ -106,6 +106,24 @@ async fn health() -> Json<HealthResponse> {
     })
 }
 
+async fn list_handler(
+    Json(req): Json<ListReq>,
+) -> Result<Json<Vec<MemoryEntry>>, (StatusCode, String)> {
+    if req.project.trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "project must not be empty".into()));
+    }
+
+    let entries = list_all(&req.project);
+
+    tracing::info!(
+        project = %req.project,
+        count = entries.len(),
+        "listed memories"
+    );
+
+    Ok(Json(entries))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,7 +132,6 @@ mod tests {
     use tower::ServiceExt;
     use http_body_util::BodyExt;
     use tempfile::TempDir;
-
     fn json_request(uri: &str, body: serde_json::Value) -> Request<Body> {
         Request::builder()
             .uri(uri)
@@ -123,7 +140,6 @@ mod tests {
             .body(Body::from(body.to_string()))
             .unwrap()
     }
-
     #[tokio::test]
     async fn health_returns_ok() {
         let app = routes();
@@ -332,5 +348,125 @@ mod tests {
         }));
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn list_returns_entries() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+        let app = routes();
+
+        // Store two items
+        let req = json_request("/store", serde_json::json!({
+            "project": project,
+            "source": "chat",
+            "context": "conversation 1"
+        }));
+        app.clone().oneshot(req).await.unwrap();
+
+        let req = json_request("/store", serde_json::json!({
+            "project": project,
+            "source": "file",
+            "context": "code content"
+        }));
+        app.clone().oneshot(req).await.unwrap();
+
+        // List
+        let req = json_request("/list", serde_json::json!({
+            "project": project
+        }));
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        let entries: Vec<MemoryEntry> = serde_json::from_slice(&body).unwrap();
+        assert_eq!(entries.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn list_empty_project_returns_400() {
+        let app = routes();
+        let req = json_request("/list", serde_json::json!({
+            "project": ""
+        }));
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn list_no_memories_returns_empty() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+        let app = routes();
+
+        let req = json_request("/list", serde_json::json!({
+            "project": project
+        }));
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        let entries: Vec<MemoryEntry> = serde_json::from_slice(&body).unwrap();
+        assert!(entries.is_empty());
+    }
+
+    #[tokio::test]
+    async fn store_with_id_then_list_shows_correct_id() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+        let app = routes();
+
+        let req = json_request("/store", serde_json::json!({
+            "project": project,
+            "source": "chat-saved",
+            "context": "my saved conversation",
+            "id": "save-abc123"
+        }));
+        app.clone().oneshot(req).await.unwrap();
+
+        let req = json_request("/list", serde_json::json!({
+            "project": project
+        }));
+        let resp = app.oneshot(req).await.unwrap();
+
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        let entries: Vec<MemoryEntry> = serde_json::from_slice(&body).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].id, "save-abc123");
+        assert_eq!(entries[0].source, "chat-saved");
+    }
+
+    #[tokio::test]
+    async fn store_upsert_then_list_shows_latest() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+        let app = routes();
+
+        // Store then update same id
+        let req = json_request("/store", serde_json::json!({
+            "project": project,
+            "source": "chat",
+            "context": "old content",
+            "id": "session-x"
+        }));
+        app.clone().oneshot(req).await.unwrap();
+
+        let req = json_request("/store", serde_json::json!({
+            "project": project,
+            "source": "chat",
+            "context": "new content",
+            "id": "session-x"
+        }));
+        app.clone().oneshot(req).await.unwrap();
+
+        let req = json_request("/list", serde_json::json!({
+            "project": project
+        }));
+        let resp = app.oneshot(req).await.unwrap();
+
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        let entries: Vec<MemoryEntry> = serde_json::from_slice(&body).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "new content");
     }
 }

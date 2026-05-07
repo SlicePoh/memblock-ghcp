@@ -10,6 +10,14 @@ struct Chunk {
     embedding: Vec<f32>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct MemoryEntry {
+    pub id: String,
+    pub source: String,
+    pub preview: String,
+    pub content: String,
+}
+
 /// Build the `.copilot-memory` directory inside the given project root.
 fn memory_dir(project: &str) -> PathBuf {
     PathBuf::from(project).join(".copilot-memory")
@@ -62,6 +70,50 @@ pub fn load(project: &str) -> Vec<(String, Vec<f32>)> {
         match fs::read(&path) {
             Ok(bytes) => match rmp_serde::from_slice::<Chunk>(&bytes) {
                 Ok(chunk) => out.push((chunk.content, chunk.embedding)),
+                Err(e) => tracing::warn!("skipping corrupted {:?}: {}", path, e),
+            },
+            Err(e) => tracing::warn!("cannot read {:?}: {}", path, e),
+        }
+    }
+
+    out
+}
+
+pub fn list_all(project: &str) -> Vec<MemoryEntry> {
+    let base = memory_dir(project);
+    let mut out = vec![];
+
+    let entries = match fs::read_dir(&base) {
+        Ok(e) => e,
+        Err(_) => return out,
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("mpk") {
+            continue;
+        }
+        let id = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        match fs::read(&path) {
+            Ok(bytes) => match rmp_serde::from_slice::<Chunk>(&bytes) {
+                Ok(chunk) => {
+                    let preview = if chunk.content.len() > 120 {
+                        format!("{}…", &chunk.content[..120])
+                    } else {
+                        chunk.content.clone()
+                    };
+                    out.push(MemoryEntry {
+                        id,
+                        source: chunk.source,
+                        preview,
+                        content: chunk.content,
+                    });
+                }
                 Err(e) => tracing::warn!("skipping corrupted {:?}: {}", path, e),
             },
             Err(e) => tracing::warn!("cannot read {:?}: {}", path, e),
@@ -191,6 +243,87 @@ mod tests {
         let loaded = load(project);
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].0, "good data");
+    }
+
+    #[test]
+    fn list_all_returns_entries() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+
+        store(project, "chat", "hello from chat", &vec![1.0], Some("s1")).unwrap();
+        store(project, "file", "code content", &vec![2.0], None).unwrap();
+
+        let entries = list_all(project);
+        assert_eq!(entries.len(), 2);
+
+        let sources: Vec<&str> = entries.iter().map(|e| e.source.as_str()).collect();
+        assert!(sources.contains(&"chat"));
+        assert!(sources.contains(&"file"));
+    }
+
+    #[test]
+    fn list_all_empty_project() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+        let entries = list_all(project);
+        assert!(entries.is_empty());
+    }
+
+    #[test]
+    fn list_all_preserves_id() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+
+        store(project, "chat", "session data", &vec![1.0], Some("my-session")).unwrap();
+        let entries = list_all(project);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].id, "my-session");
+    }
+
+    #[test]
+    fn list_all_preview_truncates_long_content() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+
+        let long_text = "a".repeat(300);
+        store(project, "src", &long_text, &vec![1.0], None).unwrap();
+
+        let entries = list_all(project);
+        assert_eq!(entries.len(), 1);
+        assert!(entries[0].preview.len() < entries[0].content.len());
+        assert!(entries[0].preview.ends_with('…'));
+        assert_eq!(entries[0].content.len(), 300);
+    }
+
+    #[test]
+    fn list_all_skips_corrupted_and_non_mpk() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+        let mem_dir = dir.path().join(".copilot-memory");
+        fs::create_dir_all(&mem_dir).unwrap();
+
+        fs::write(mem_dir.join("bad.mpk"), b"garbage").unwrap();
+        fs::write(mem_dir.join("notes.txt"), "not a memory").unwrap();
+        store(project, "src", "good data", &vec![1.0], None).unwrap();
+
+        let entries = list_all(project);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "good data");
+    }
+
+    #[test]
+    fn store_overwrites_content_on_upsert() {
+        let dir = TempDir::new().unwrap();
+        let project = dir.path().to_str().unwrap();
+
+        store(project, "chat", "v1", &vec![1.0], Some("sess")).unwrap();
+        store(project, "chat", "v2", &vec![2.0], Some("sess")).unwrap();
+        store(project, "chat", "v3", &vec![3.0], Some("sess")).unwrap();
+
+        let entries = list_all(project);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "v3");
+        assert_eq!(entries[0].source, "chat");
     }
 
     #[test]

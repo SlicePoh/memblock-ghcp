@@ -4,6 +4,16 @@
   "description": "Persistent memory for GitHub Copilot — store and retrieve context across sessions.",
   "version": "0.0.1",
   "publisher": "memblock",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SlicePoh/memblock-ghcp.git"
+  },
+  "homepage": "https://github.com/SlicePoh/memblock-ghcp#readme",
+  "bugs": {
+    "url": "https://github.com/SlicePoh/memblock-ghcp/issues"
+  },
+  "icon": "public/icon.png",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -21,6 +31,10 @@
       {
         "command": "copilotMemory.retrieveMemory",
         "title": "Copilot Memory: Retrieve Memory"
+      },
+      {
+        "command": "copilotMemory.saveCurrentChat",
+        "title": "Copilot Memory: Save Current Chat"
       }
     ],
     "chatParticipants": [
@@ -33,11 +47,11 @@
         "commands": [
           {
             "name": "recall",
-            "description": "Recall relevant memories for your question"
+            "description": "Pick stored memories to load as context"
           },
           {
             "name": "save",
-            "description": "Save the current chat message as a memory"
+            "description": "Save this conversation or text as a memory"
           }
         ]
       }
@@ -61,7 +75,8 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "test": "tsc -p ./ && node out/utils.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

@@ -2,16 +2,13 @@ import * as vscode from "vscode";
 import * as https from "node:https";
 import * as http from "node:http";
 
-
 export function getServerUrl(): string {
   const config = vscode.workspace.getConfiguration("copilotMemory");
   return config.get<string>("serverUrl", "http://127.0.0.1:3210");
 }
 
 
-
 // Lightweight JSON POST using only Node built-ins (no node-fetch dependency).
-
 function jsonPost<T>(url: string, body: object): Promise<T> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
@@ -19,11 +16,7 @@ function jsonPost<T>(url: string, body: object): Promise<T> {
     const data = JSON.stringify(body);
     const req = transport.request(
       {
-        hostname: parsed.hostname,
-        port: parsed.port,
-        path: parsed.pathname,
-        method: "POST",
-        headers: {
+        hostname: parsed.hostname, port: parsed.port, path: parsed.pathname, method: "POST", headers: {
           "Content-Type": "application/json",
           "Content-Length": Buffer.byteLength(data),
         },
@@ -56,4 +49,15 @@ export async function storeMemory(project: string, source: string, context: stri
 export async function retrieveMemory(project: string, prompt: string): Promise<string[]> {
   const res = await jsonPost<string[]>(`${getServerUrl()}/retrieve`, { project, prompt });
   return res;
+}
+
+export interface MemoryEntry {
+  id: string;
+  source: string;
+  preview: string;
+  content: string;
+}
+
+export async function listMemories(project: string): Promise<MemoryEntry[]> {
+  return jsonPost<MemoryEntry[]>(`${getServerUrl()}/list`, { project });
 }
