@@ -59,11 +59,6 @@
     "configuration": {
       "title": "MemBlock",
       "properties": {
-        "memblock.serverUrl": {
-          "type": "string",
-          "default": "https://memblock-ghcp.onrender.com",
-          "description": "URL of the MemBlock memory engine server."
-        },
         "memblock.autoCapture": {
           "type": "boolean",
           "default": false,

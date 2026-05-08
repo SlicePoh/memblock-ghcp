@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { storeMemory, retrieveMemory, listMemories } from "./memoryClient";
+import { storeMemory, retrieveMemory, listMemories } from "./memoryEngine";
 import { simpleHash, getProjectRoot } from "./utils";
 
 let autoCaptureDisposable: vscode.Disposable | undefined;
@@ -132,9 +132,9 @@ export function activate(context: vscode.ExtensionContext) {
     async () => {
       const project = getProjectRoot();
 
-      let entries;
+      let entries: import("./memoryEngine").MemoryEntry[];
       try {
-        entries = await listMemories(project);
+        entries = listMemories(project);
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to list memories: ${err.message}`);
         return;
@@ -302,11 +302,11 @@ export function activate(context: vscode.ExtensionContext) {
       }
       // /recall command — show picker to choose which memories to feed as context
       if (request.command === "recall") {
-        let entries;
+        let entries: import("./memoryEngine").MemoryEntry[];
         try {
-          entries = await listMemories(project);
+          entries = listMemories(project);
         } catch (err: any) {
-          stream.markdown(`**Could not reach memory engine:** ${err.message}\n\nMake sure the backend is running.`);
+          stream.markdown(`**Could not list memories:** ${err.message}`);
           return;
         }
 
@@ -404,9 +404,9 @@ export function activate(context: vscode.ExtensionContext) {
       // Retrieve memories relevant to the prompt
       let memories: string[] = [];
       try {
-        memories = await retrieveMemory(project, prompt);
+        memories = retrieveMemory(project, prompt);
       } catch (err: any) {
-        stream.markdown(`**Could not reach memory engine:** ${err.message}\n\nMake sure the backend is running.`);
+        stream.markdown(`**Could not retrieve memories:** ${err.message}`);
         return;
       }
       // Build context for the LLM

@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: memblock-engine
-    runtime: docker
-    dockerfilePath: ./memory-engine/Dockerfile
-    dockerContext: ./memory-engine
-    envVars:
-      - key: PORT
-        value: "3210"
