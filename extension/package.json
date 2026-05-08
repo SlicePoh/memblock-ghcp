@@ -61,8 +61,8 @@
       "properties": {
         "memblock.serverUrl": {
           "type": "string",
-          "default": "http://127.0.0.1:3210",
-          "description": "URL of the memory-engine Rust server."
+          "default": "https://memblock-ghcp.onrender.com",
+          "description": "URL of the MemBlock memory engine server."
         },
         "memblock.autoCapture": {
           "type": "boolean",
