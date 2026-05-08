@@ -5,12 +5,12 @@ import { simpleHash, getProjectRoot } from "./utils";
 let autoCaptureDisposable: vscode.Disposable | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log("copilot-memory extension activated");
+  console.log("memblock extension activated");
 
   // ── Save Current Chat command ──
   // One-step save: auto-copies the active chat panel content and stores it
   const saveChatCmd = vscode.commands.registerCommand(
-    "copilotMemory.saveCurrentChat",
+    "memblock.saveCurrentChat",
     async () => {
       const previousClipboard = await vscode.env.clipboard.readText();
 
@@ -69,7 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Store Memory command
   const storeCmd = vscode.commands.registerCommand(
-    "copilotMemory.storeMemory",
+    "memblock.storeMemory",
     async () => {
       const pick = await vscode.window.showQuickPick(
         [
@@ -128,7 +128,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // ── Retrieve Memory command ──
   const retrieveCmd = vscode.commands.registerCommand(
-    "copilotMemory.retrieveMemory",
+    "memblock.retrieveMemory",
     async () => {
       const project = getProjectRoot();
 
@@ -176,7 +176,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Auto-capture on document change (opt-in via setting)
   function registerAutoCapture() {
-    const config = vscode.workspace.getConfiguration("copilotMemory");
+    const config = vscode.workspace.getConfiguration("memblock");
     const enabled = config.get<boolean>("autoCapture", false);
 
     if (enabled && !autoCaptureDisposable) {
@@ -212,13 +212,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Re-evaluate when configuration changes
   vscode.workspace.onDidChangeConfiguration((e) => {
-    if (e.affectsConfiguration("copilotMemory.autoCapture")) {
+    if (e.affectsConfiguration("memblock.autoCapture")) {
       registerAutoCapture();
     }
   });
 
   // @memory Chat Participant
-  const participant = vscode.chat.createChatParticipant("copilot-memory.memory", async (
+  const participant = vscode.chat.createChatParticipant("memblock.memory", async (
           request: vscode.ChatRequest, context: vscode.ChatContext, stream: vscode.ChatResponseStream, 
           token: vscode.CancellationToken ) => {
       const project = getProjectRoot();
@@ -281,7 +281,7 @@ export function activate(context: vscode.ExtensionContext) {
               } else {
                 stream.markdown(
                   "**Nothing to save.**\n\n" +
-                  "Easiest way: run **Copilot Memory: Save Current Chat** from the Command Palette (`Ctrl+Shift+P`).\n\n" +
+                  "Easiest way: run **MemBlock: Save Current Chat** from the Command Palette (`Ctrl+Shift+P`).\n\n" +
                   "Or: copy the chat manually (`Ctrl+A`, `Ctrl+C` in chat panel), then `@memory /save` again."
                 );
                 return;

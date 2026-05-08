@@ -1,9 +1,9 @@
 {
-  "name": "copilot-memory",
-  "displayName": "Copilot Memory",
+  "name": "memblock",
+  "displayName": "MemBlock",
   "description": "Persistent memory for GitHub Copilot — store and retrieve context across sessions.",
   "version": "0.0.1",
-  "publisher": "memblock",
+  "publisher": "ShanitKumarPaul",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -25,22 +25,22 @@
   "contributes": {
     "commands": [
       {
-        "command": "copilotMemory.storeMemory",
-        "title": "Copilot Memory: Store Memory"
+        "command": "memblock.storeMemory",
+        "title": "MemBlock: Store Memory"
       },
       {
-        "command": "copilotMemory.retrieveMemory",
-        "title": "Copilot Memory: Retrieve Memory"
+        "command": "memblock.retrieveMemory",
+        "title": "MemBlock: Retrieve Memory"
       },
       {
-        "command": "copilotMemory.saveCurrentChat",
-        "title": "Copilot Memory: Save Current Chat"
+        "command": "memblock.saveCurrentChat",
+        "title": "MemBlock: Save Current Chat"
       }
     ],
     "chatParticipants": [
       {
-        "id": "copilot-memory.memory",
-        "fullName": "Memory",
+        "id": "memblock.memory",
+        "fullName": "MemBlock",
         "name": "memory",
         "description": "Retrieves stored memories and uses them as context for your question.",
         "isSticky": true,
@@ -57,14 +57,14 @@
       }
     ],
     "configuration": {
-      "title": "Copilot Memory",
+      "title": "MemBlock",
       "properties": {
-        "copilotMemory.serverUrl": {
+        "memblock.serverUrl": {
           "type": "string",
           "default": "http://127.0.0.1:3210",
           "description": "URL of the memory-engine Rust server."
         },
-        "copilotMemory.autoCapture": {
+        "memblock.autoCapture": {
           "type": "boolean",
           "default": false,
           "description": "Automatically capture document changes as memories."

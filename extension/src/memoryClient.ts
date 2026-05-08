@@ -3,7 +3,7 @@ import * as https from "node:https";
 import * as http from "node:http";
 
 export function getServerUrl(): string {
-  const config = vscode.workspace.getConfiguration("copilotMemory");
+  const config = vscode.workspace.getConfiguration("memblock");
   return config.get<string>("serverUrl", "http://127.0.0.1:3210");
 }
 
