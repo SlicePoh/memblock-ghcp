@@ -28,8 +28,9 @@ async fn main() {
 
     let app = routes::routes().layer(cors).layer(body_limit);
 
-    let addr = "127.0.0.1:3210";
-    let listener = tokio::net::TcpListener::bind(addr)
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3210".to_string());
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .expect("failed to bind");
 
