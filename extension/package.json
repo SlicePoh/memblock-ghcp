@@ -2,7 +2,7 @@
   "name": "memblock",
   "displayName": "MemBlock",
   "description": "Persistent memory for GitHub Copilot — store and retrieve context across sessions.",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "publisher": "ShanitKumarPaul",
   "license": "MIT",
   "repository": {
