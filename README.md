@@ -1,31 +1,19 @@
-# Copilot Memory
+# MemBlock
 
-A VS Code extension that gives GitHub Copilot persistent memory across chat sessions. Store context from conversations, code, or clipboard — then retrieve it automatically in future chats using `@memory`.
+MemBlock is a VS Code extension that gives GitHub Copilot persistent memory across chat sessions. Store context from conversations, code, or the clipboard, then retrieve it later with `@memory` or the command palette.
 
 ## How It Works
 
 - **Extension** (TypeScript) — adds commands and a `@memory` chat participant to VS Code
-- **Memory Engine** (Rust) — local HTTP server that stores and retrieves memories using semantic embeddings
-- **Storage** — memories saved as MessagePack files (`.mpk`) inside your project's `.copilot-memory/` folder
+- **Storage** — memories are stored locally inside your project's `.copilot-memory/` folder
+- **Retrieval** — saved content is ranked with a deterministic embedding-based similarity match
 
 ## Prerequisites
 
-- [Rust](https://rustup.rs/) (for the backend)
-- [Node.js](https://nodejs.org/) (for the extension)
+- [Node.js](https://nodejs.org/)
 - VS Code with GitHub Copilot
 
 ## Setup
-
-### 1. Start the backend
-
-```bash
-cd memory-engine
-cargo run
-```
-
-The server starts on `http://127.0.0.1:3210`.
-
-### 2. Run the extension
 
 ```bash
 cd extension
@@ -45,11 +33,11 @@ Then press **F5** in VS Code to launch the Extension Development Host.
 | `@memory /save <text>` | Saves text as a memory for future sessions |
 | `@memory /recall <query>` | Same as default — recalls memories matching the query |
 
-Every `@memory` exchange is **auto-saved** — context accumulates automatically across sessions.
+MemBlock can also save chat content directly with `MemBlock: Save Current Chat`.
 
 ### Manual Commands (Command Palette)
 
-**Store Memory** (`Copilot Memory: Store Memory`)
+**Store Memory** (`MemBlock: Store Memory`)
 
 Choose a source:
 - **Clipboard** — copy a chat conversation first, then store it
@@ -63,24 +51,16 @@ Shows a **multi-select picker** with all stored memories. Check the ones you wan
 ## Project Structure
 
 ```
-extension/          VS Code extension (TypeScript)
+extension/          VS Code extension
   src/
-    extension.ts      Commands, chat participant, auto-capture
-    memoryClient.ts   HTTP client for the backend
-
-memory-engine/      Rust backend server
-  src/
-    main.rs           Server entry point (tracing, CORS, body limits)
-    routes.rs         HTTP handlers (/store, /retrieve, /list, /health)
-    storage.rs        MessagePack filesystem storage
-    embedding.rs      Deterministic 128-dim embedding (placeholder)
-    retrieval.rs      Cosine similarity scoring
-    chunking.rs       Text chunking utility
+    extension.ts      Commands, chat participant, and auto-capture
+    memoryEngine.ts   Local memory storage and retrieval
+    utils.ts          Shared helpers
 ```
 
 ## Storage Format
 
-Memories are stored as `.mpk` (MessagePack) files in `{project}/.copilot-memory/`. Each file contains:
+Memories are stored as `.json` files in `{project}/.copilot-memory/`. Each file contains:
 
 ```
 source:    where the memory came from
@@ -88,27 +68,23 @@ content:   the actual text
 embedding: 128-dimensional float vector
 ```
 
-MessagePack is ~30-40% smaller than equivalent JSON.
-
 Add `.copilot-memory/` to your `.gitignore`.
 
 ## Configuration
 
 | Setting | Default | Description |
 |---|---|---|
-| `copilotMemory.serverUrl` | `http://127.0.0.1:3210` | Backend server URL |
-| `copilotMemory.autoCapture` | `false` | Auto-capture document changes as memories |
+| `memblock.autoCapture` | `false` | Auto-capture document changes as memories |
 
 ## Running Tests
 
 ```bash
-cd memory-engine
-cargo test
+cd extension
+npm test
 ```
 
 ## Future Improvements
 
-- Replace placeholder embedding with a real model
-- Add chunking before storing large content
-- Add recency weighting to retrieval
-- Publish to VS Code Marketplace
+- Improve retrieval quality for larger memory sets
+- Add better memory organization and filtering
+- Expand command and chat workflows

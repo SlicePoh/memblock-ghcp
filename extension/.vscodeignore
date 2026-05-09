@@ -1,0 +1,9 @@
+src/**
+**/*.ts
+**/*.map
+**/*.test.js
+**/*.test.ts
+tsconfig.json
+.gitignore
+public/icon1.png
+node_modules/**/.bin/**
